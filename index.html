@@ -1,81 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Install and Configure Percona Server on Amazon Linux</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      margin: 0;
-      padding: 0;
-      background-color: #f9f9f9;
-      color: #333;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Install and Configure Percona Server on Amazon Linux</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+    color: #333;
+    position: relative;
+  }
 
-    header, footer {
-      background-color: #2c3e50;
-      color: #fff;
-      text-align: center;
-      padding: 10px 0;
-    }
+  /* Semi-transparent watermark */
+  body::before {
+    content: "Vaibhav";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    font-size: 100px;
+    color: rgba(0, 0, 0, 0.05);
+    transform: translate(-50%, -50%) rotate(-30deg);
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+  }
 
-    header h1 {
-      margin: 5px 0;
-      font-size: 24px;
-    }
+  header, footer {
+    background-color: #2c3e50;
+    color: #fff;
+    text-align: center;
+    padding: 10px 0;
+    position: relative;
+    z-index: 1;
+  }
 
-    header h2, footer h2 {
-      margin: 0;
-      font-weight: normal;
-      font-size: 16px;
-      color: #f1c40f;
-    }
+  header h1 {
+    margin: 5px 0;
+    font-size: 24px;
+  }
 
-    main {
-      padding: 20px;
-    }
+  header h2, footer h2 {
+    margin: 0;
+    font-weight: normal;
+    font-size: 16px;
+    color: #f1c40f;
+  }
 
-    h2 {
-      margin-top: 30px;
-      border-bottom: 2px solid #ccc;
-      padding-bottom: 5px;
-    }
+  main {
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+  }
 
+  h2 {
+    margin-top: 30px;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 5px;
+  }
+
+  pre {
+    background-color: #272822;
+    color: #f8f8f2;
+    padding: 15px;
+    overflow-x: auto;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+
+  code {
+    font-family: "Courier New", Courier, monospace;
+    color: #e67e22;
+  }
+
+  ul {
+    margin: 10px 0 20px 20px;
+  }
+
+  .note {
+    background-color: #dff0d8;
+    border-left: 5px solid #3c763d;
+    padding: 10px;
+    margin: 15px 0;
+  }
+
+  .section {
+    margin-bottom: 40px;
+  }
+
+  /* Responsive styles */
+  @media only screen and (max-width: 768px) {
     pre {
-      background-color: #272822;
-      color: #f8f8f2;
-      padding: 15px;
-      overflow-x: auto;
-      border-radius: 5px;
-    }
-
-    code {
-      font-family: "Courier New", Courier, monospace;
-      color: #e67e22;
-    }
-
-    ul {
-      margin: 10px 0 20px 20px;
-    }
-
-    .note {
-      background-color: #dff0d8;
-      border-left: 5px solid #3c763d;
+      font-size: 12px;
       padding: 10px;
-      margin: 15px 0;
     }
+    header h1 {
+      font-size: 20px;
+    }
+    header h2, footer h2 {
+      font-size: 14px;
+    }
+  }
 
-    .section {
-      margin-bottom: 40px;
+  @media only screen and (max-width: 480px) {
+    pre {
+      font-size: 10px;
+      padding: 8px;
     }
-  </style>
+    header h1 {
+      font-size: 18px;
+    }
+    header h2, footer h2 {
+      font-size: 12px;
+    }
+  }
+</style>
 </head>
 <body>
 
 <header>
   <h1>How to Install and Configure Percona Server on Amazon Linux</h1>
+  <h2>Author: Vaibhav</h2>
 </header>
 
 <main>
@@ -158,12 +206,12 @@ cat /home/ec2-user/rds-combined-ca-bundle.pem
 <div class="section">
   <h2>5️⃣ Test MySQL Connection to RDS</h2>
   <pre>
-mysql -h &lt;RDS_ENDPOINT&gt; -u &lt;USERNAME&gt; -p \
+mysql -h **** -u **** -p \
 --ssl-mode=VERIFY_CA \
 --ssl-ca=/home/ec2-user/rds-combined-ca-bundle.pem \
 -e "SELECT @@hostname, @@version;"
   </pre>
-  <p class="note">Replace &lt;RDS_ENDPOINT&gt; and &lt;USERNAME&gt; with your RDS details.</p>
+  <p class="note">Replace **** with your RDS endpoint and username.</p>
 </div>
 
 <div class="section">
@@ -174,13 +222,13 @@ vim ~/.my.cnf
 
 # Add the following:
 [client]
-host=RDS_ENDPOINT
-user=admin
-password=vaibhav12345
+host=****
+user=****
+password=****
 ssl=1
 ssl-ca=/home/ec2-user/rds-combined-ca-bundle.pem
 
-# Secure the configuration file
+# Secure configuration file
 chmod 600 ~/.my.cnf
   </pre>
 </div>
@@ -203,6 +251,7 @@ D=ypp_uat,t=partner \
 --alter-foreign-keys-method=auto \
 --progress=time,30 \
 --chunk-size=1000 \
+--statistics \
 --dry-run
 # Always use --dry-run first. Use --execute only after verifying.
   </pre>
