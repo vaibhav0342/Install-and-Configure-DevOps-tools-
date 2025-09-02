@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install and Configure Percona Server on Amazon Linux</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    header, footer {
+      background-color: #2c3e50;
+      color: #fff;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    header h1 {
+      margin: 5px 0;
+      font-size: 24px;
+    }
+
+    header h2, footer h2 {
+      margin: 0;
+      font-weight: normal;
+      font-size: 16px;
+      color: #f1c40f;
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    h2 {
+      margin-top: 30px;
+      border-bottom: 2px solid #ccc;
+      padding-bottom: 5px;
+    }
+
+    pre {
+      background-color: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      overflow-x: auto;
+      border-radius: 5px;
+    }
+
+    code {
+      font-family: "Courier New", Courier, monospace;
+      color: #e67e22;
+    }
+
+    ul {
+      margin: 10px 0 20px 20px;
+    }
+
+    .note {
+      background-color: #dff0d8;
+      border-left: 5px solid #3c763d;
+      padding: 10px;
+      margin: 15px 0;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>How to Install and Configure Percona Server on Amazon Linux</h1>
+</header>
+
+<main>
+
+<div class="section">
+  <h2>Prerequisites</h2>
+  <ul>
+    <li>Amazon Linux 2 or 2023 instance</li>
+    <li>Sudo privileges</li>
+    <li>RDS endpoint, username, and password</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>1️⃣ Update System and Install Dependencies</h2>
+  <pre>
+sudo yum update -y
+sudo amazon-linux-extras install epel -y
+sudo yum install -y epel-release perl perl-core perl-DBI perl-DBD-MySQL wget tar curl
+
+# Verify Perl modules
+perl -MEnglish -e 'print "English module OK\n"'
+perl -MDBI -e 'print "DBI OK\n"'
+perl -MDBD::mysql -e 'print "DBD::mysql OK\n"'
+  </pre>
+</div>
+
+<div class="section">
+  <h2>2️⃣ Install Percona Toolkit</h2>
+  <pre>
+# Download Percona Toolkit 3.7.0
+wget https://downloads.percona.com/downloads/percona-toolkit/3.7.0/binary/tarball/percona-toolkit-3.7.0_x86_64.tar.gz
+
+# Extract
+tar -xzf percona-toolkit-3.7.0_x86_64.tar.gz
+cd percona-toolkit-3.7.0_x86_64/
+sudo cp bin/* /usr/local/bin/
+
+# Cleanup
+cd ..
+rm -rf percona-toolkit-3.7.0_x86_64 percona-toolkit-3.7.0_x86_64.tar.gz
+
+# Verify installation
+pt-online-schema-change --version
+  </pre>
+</div>
+
+<div class="section">
+  <h2>3️⃣ Install MySQL Client</h2>
+  <pre>
+# Add MySQL 8 repository
+wget https://dev.mysql.com/get/mysql80-community-release-el7-8.noarch.rpm
+sudo rpm -ivh mysql80-community-release-el7-8.noarch.rpm
+
+# Install MySQL client
+sudo yum install -y mysql-community-client
+
+# Cleanup
+rm mysql80-community-release-el7-8.noarch.rpm
+
+# Verify installation
+mysql --version
+  </pre>
+</div>
+
+<div class="section">
+  <h2>4️⃣ Download and Configure RDS SSL Certificate</h2>
+  <pre>
+# Download SSL certificate
+wget https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -O /home/ec2-user/rds-combined-ca-bundle.pem
+
+# Secure the certificate
+chmod 600 /home/ec2-user/rds-combined-ca-bundle.pem
+
+# Verify content
+cat /home/ec2-user/rds-combined-ca-bundle.pem
+  </pre>
+</div>
+
+<div class="section">
+  <h2>5️⃣ Test MySQL Connection to RDS</h2>
+  <pre>
+mysql -h &lt;RDS_ENDPOINT&gt; -u &lt;USERNAME&gt; -p \
+--ssl-mode=VERIFY_CA \
+--ssl-ca=/home/ec2-user/rds-combined-ca-bundle.pem \
+-e "SELECT @@hostname, @@version;"
+  </pre>
+  <p class="note">Replace &lt;RDS_ENDPOINT&gt; and &lt;USERNAME&gt; with your RDS details.</p>
+</div>
+
+<div class="section">
+  <h2>6️⃣ Configure MySQL Client (~/.my.cnf) for Convenience</h2>
+  <pre>
+# Create configuration file
+vim ~/.my.cnf
+
+# Add the following:
+[client]
+host=RDS_ENDPOINT
+user=admin
+password=vaibhav12345
+ssl=1
+ssl-ca=/home/ec2-user/rds-combined-ca-bundle.pem
+
+# Secure the configuration file
+chmod 600 ~/.my.cnf
+  </pre>
+</div>
+
+<div class="section">
+  <h2>7️⃣ Test MySQL Client Using ~/.my.cnf</h2>
+  <pre>
+mysql -p -e "SELECT @@hostname, @@version;"
+# The -p flag prompts for the password if not specified in the config
+  </pre>
+</div>
+
+<div class="section">
+  <h2>8️⃣ Using Percona Toolkit with ~/.my.cnf</h2>
+  <pre>
+pt-online-schema-change \
+--alter "ENGINE=InnoDB" \
+D=ypp_uat,t=partner \
+--ask-pass \
+--alter-foreign-keys-method=auto \
+--progress=time,30 \
+--chunk-size=1000 \
+--statistics \
+--dry-run
+# Always use --dry-run first. Use --execute only after verifying.
+  </pre>
+</div>
+
+<div class="section note">
+  <strong>Notes:</strong>
+  <ul>
+    <li>All <code>dnf</code> commands are removed because Amazon Linux 2 uses <code>yum</code>.</li>
+    <li>Avoid unnecessary packages like MariaDB if only MySQL client is required.</li>
+    <li>Always test Percona Toolkit commands with <code>--dry-run</code> before executing on production.</li>
+  </ul>
+</div>
+
+</main>
+
+<footer>
+  <h2>Created by Vaibhav Upare</h2>
+</footer>
+
+</body>
+</html>
+
